@@ -7,7 +7,7 @@ import { Car, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [loading, setLoading] = useState(false);
@@ -17,16 +17,25 @@ export default function LoginPage() {
 
   const handleSendOtp = async () => {
     setError('');
-    if (!phone.trim()) return setError('Please enter your phone number.');
-    const fullPhone = phone.startsWith('+') ? phone : `+254${phone.replace(/^0/, '')}`;
+    if (!identifier.trim()) return setError('Please enter your email or phone number.');
+    
+    let payload = {};
+    if (identifier.includes('@')) {
+      payload = { email: identifier.trim() };
+    } else {
+      const phoneStr = identifier.trim();
+      const fullPhone = phoneStr.startsWith('+') ? phoneStr : `+254${phoneStr.replace(/^0/, '')}`;
+      payload = { phone: fullPhone };
+    }
+
     setLoading(true);
     try {
-      const { data } = await api.post('/admin/auth/send-otp', { phone: fullPhone });
+      const { data } = await api.post('/admin/auth/send-otp', payload);
       setSessionId(data.data.sessionId);
       setStep('otp');
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string; error?: string } } };
-      setError(err?.response?.data?.message || err?.response?.data?.error || 'Failed to send OTP. Check your number.');
+      setError(err?.response?.data?.message || err?.response?.data?.error || 'Failed to send OTP. Check your details.');
     } finally { setLoading(false); }
   };
 
@@ -70,18 +79,17 @@ export default function LoginPage() {
           {step === 'phone' ? (
             <>
               <h2 className="text-xl font-bold text-textPrimary mb-1">Sign In</h2>
-              <p className="text-sm text-textSecondary mb-6">Enter your admin phone number to receive an OTP.</p>
+              <p className="text-sm text-textSecondary mb-6">Enter your admin email or phone number to receive an OTP.</p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-textSecondary mb-1.5">Phone Number</label>
+                  <label className="block text-sm font-medium text-textSecondary mb-1.5">Email or Phone Number</label>
                   <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
-                    <span className="px-3 py-3 bg-slate-50 border-r border-border text-sm text-textSecondary font-medium">🇰🇪 +254</span>
                     <input
-                      type="tel"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
+                      type="text"
+                      value={identifier}
+                      onChange={e => setIdentifier(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                      placeholder="7XXXXXXXX"
+                      placeholder="admin@fikishwa.com or 07XXXXXXXX"
                       className="flex-1 px-4 py-3 text-sm focus:outline-none text-textPrimary"
                     />
                   </div>
@@ -96,7 +104,7 @@ export default function LoginPage() {
           ) : (
             <>
               <h2 className="text-xl font-bold text-textPrimary mb-1">Enter OTP</h2>
-              <p className="text-sm text-textSecondary mb-6">A 6-digit code was sent to your phone.</p>
+              <p className="text-sm text-textSecondary mb-6">A 6-digit code was sent to your email or phone.</p>
               <div className="flex gap-2 justify-between mb-6">
                 {otp.map((d, i) => (
                   <input
@@ -117,7 +125,7 @@ export default function LoginPage() {
                 </div>
               )}
               <button onClick={() => { setStep('phone'); setError(''); }} className="w-full text-sm text-textMuted mt-2 hover:text-primary transition-colors">
-                ← Back to phone number
+                ← Back to sign in
               </button>
             </>
           )}
